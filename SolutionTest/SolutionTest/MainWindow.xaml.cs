@@ -24,5 +24,10 @@ namespace SolutionTest
         {
             InitializeComponent();
         }
+
+        private void _1stButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("sample");
+        }
     }
 }

@@ -47,6 +47,7 @@ namespace SolutionTest
                 s = string.Empty;
                 switch (item.Type)
                 {
+                    // BYTE
                     case 1:
                     case 7:
                         if (1 <= item.Len)
@@ -60,10 +61,12 @@ namespace SolutionTest
                             s = sb.ToString();
                         }
                         break;
+                    // ASCII
                     case 2:
                         s = System.Text.Encoding.ASCII.GetString(item.Value);
                         s = s.Trim(new char[] { '\0' });
                         break;
+                    // SHORT
                     case 3:
                         if (4 <= item.Len)
                         {
@@ -80,6 +83,7 @@ namespace SolutionTest
                             s = sb.ToString();
                         }
                         break;
+                    // LONG
                     case 4:
                         if (4 <= item.Len)
                         {
@@ -96,6 +100,7 @@ namespace SolutionTest
                             s = sb.ToString();
                         }
                         break;
+                    // Real
                     case 5:
                         if(4 <= item.Len)
                         {
@@ -112,6 +117,7 @@ namespace SolutionTest
                             s = sb.ToString();
                         }
                         break;
+                    // signed Real
                     case 10:
                         if (4 <= item.Len)
                         {

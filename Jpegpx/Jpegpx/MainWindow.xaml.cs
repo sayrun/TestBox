@@ -24,10 +24,5 @@ namespace Jpegpx
         {
             InitializeComponent();
         }
-
-        private void OnClick(object sender, RoutedEventArgs e)
-        {
-            System.Windows.MessageBox.Show("test");
-        }
     }
 }

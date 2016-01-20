@@ -171,41 +171,8 @@ namespace JpegExifTest
                         sNS = sNS.Trim(new char[] { '\0' });
                         break;
 
-                    // 0x0002-緯度(数値)(Rational)
+                    // 0x0002-緯度(数値)(Rational):latitude - 緯度
                     case 0x0002:
-                        {
-                            if (4 <= item.Len)
-                            {
-                                UInt32[] lng = new UInt32[item.Len / 4];
-
-                                System.Buffer.BlockCopy(item.Value, 0, lng, 0, item.Len);
-
-                                dcLon = lng[0];
-                                dcLon /= lng[1];
-
-                                decimal dPar1 = 60;
-                                for (int index = 1; index < lng.Length / 2; ++index)
-                                {
-                                    decimal dWork = lng[index * 2];
-                                    dWork /= dPar1;
-                                    dWork /= lng[index * 2 + 1];
-
-                                    dcLon += dWork;
-                                    dPar1 *= 60;
-                                }
-
-                                System.Diagnostics.Debug.Print("{0}[{1}]", sNS, dcLon);
-                            }
-                        }
-                        break;
-
-                    // 0x0003-東経(E) or 西経(W)(Ascii)
-                    case 0x0003:
-                        sEW = System.Text.Encoding.ASCII.GetString(item.Value);
-                        sEW = sEW.Trim(new char[] { '\0' });
-                        break;
-                    // 0x0004-経度(数値)(Rational)
-                    case 0x0004:
                         {
                             if (4 <= item.Len)
                             {
@@ -227,7 +194,40 @@ namespace JpegExifTest
                                     dPar1 *= 60;
                                 }
 
-                                System.Diagnostics.Debug.Print("{0}[{1}]", sEW, dcLat);
+                                System.Diagnostics.Debug.Print("{0}[{1}]", sNS, dcLat);
+                            }
+                        }
+                        break;
+
+                    // 0x0003-東経(E) or 西経(W)(Ascii)
+                    case 0x0003:
+                        sEW = System.Text.Encoding.ASCII.GetString(item.Value);
+                        sEW = sEW.Trim(new char[] { '\0' });
+                        break;
+                    // 0x0004-経度(数値)(Rational)：longitude - 経度
+                    case 0x0004:
+                        {
+                            if (4 <= item.Len)
+                            {
+                                UInt32[] lng = new UInt32[item.Len / 4];
+
+                                System.Buffer.BlockCopy(item.Value, 0, lng, 0, item.Len);
+
+                                dcLon = lng[0];
+                                dcLon /= lng[1];
+
+                                decimal dPar1 = 60;
+                                for (int index = 1; index < lng.Length / 2; ++index)
+                                {
+                                    decimal dWork = lng[index * 2];
+                                    dWork /= dPar1;
+                                    dWork /= lng[index * 2 + 1];
+
+                                    dcLon += dWork;
+                                    dPar1 *= 60;
+                                }
+
+                                System.Diagnostics.Debug.Print("{0}[{1}]", sEW, dcLon);
                             }
                         }
                         break;
@@ -236,7 +236,7 @@ namespace JpegExifTest
 
             ListViewItem listItem = new ListViewItem(filePath);
             listItem.SubItems.Add(dt.ToString());
-            listItem.SubItems.Add(string.Format("{0} {1}, {2} {3}", sNS, dcLon, sEW, dcLat));
+            listItem.SubItems.Add(string.Format("{0} {1}, {2} {3}", sNS, dcLat, sEW, dcLon));
 
             bool blMatch = false;
             foreach( ListViewItem itema in listView1.Items)
@@ -253,7 +253,7 @@ namespace JpegExifTest
                         listItem.SubItems.Add(string.Format("{0} {1}, {2} {3}", trkPt.LonMark, trkPt.Lon, trkPt.LatMark, trkPt.Lat));
 
                         //string s = string.Format("http://maps.google.com/maps?q={0},{1}", trkPt.Lat, trkPt.Lon);
-                        string s = string.Format("http://maps.google.com/maps?q={0},{1}", dcLon, dcLat);
+                        string s = string.Format("http://maps.google.com/maps?q={0},{1}", dcLat, dcLon);
                         System.Diagnostics.Process.Start(s);
 
                         break;

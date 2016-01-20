@@ -11,20 +11,20 @@ namespace JpegExifTest
 {
     public partial class Form1 : Form
     {
-        private Dictionary<string, List< TrackPointItem>> _tracks;
+        private List<GPXFileItem> _gpxFile;
 
         public Form1()
         {
             InitializeComponent();
 
-            _tracks = new Dictionary<string, List<TrackPointItem>>();
+            _gpxFile = new List<GPXFileItem>();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
             if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
             {
-                TestFunc1(openFileDialog1.FileName);
+                LoadJpeg(openFileDialog1.FileName);
             }
         }
 
@@ -112,6 +112,160 @@ namespace JpegExifTest
             bmp.Save(newPath);
         }
 
+        private void LoadJpeg(string filePath)
+        {
+            Bitmap bmp = new Bitmap(filePath);
+
+            // 0x0001-北緯(N) or 南緯(S)(Ascii)
+            // 0x0002-緯度(数値)(Rational)
+            // 0x0003-東経(E) or 西経(W)(Ascii)
+            // 0x0004-経度(数値)(Rational)
+            // 0x0005-高度の基準(Byte)
+            // 0x0006-高度(数値)(Rational)
+            // 0x0007-GPS時間(原子時計の時間)(Rational)
+            // 0x0008-測位に使った衛星信号(Ascii)
+            // 0x0009-GPS受信機の状態(Ascii)
+            // 0x000A-GPSの測位方法(Ascii)
+            // 0x000B-測位の信頼性(Rational)
+            // 0x000C-速度の単位(Ascii)
+            // 0x000D-速度(数値)(Rational)
+
+            DateTime dt = DateTime.MinValue;
+            string sNS = string.Empty;
+            string sEW = string.Empty;
+            decimal dcLon = 0;
+            decimal dcLat = 0;
+
+            foreach (System.Drawing.Imaging.PropertyItem item in bmp.PropertyItems)
+            {
+                switch (item.Id)
+                {
+                    // 0x9004 - デジタルデータの作成日時
+                    case 0x9004:
+                        if (0 == dt.CompareTo(DateTime.MinValue))
+                        {
+                            string s = System.Text.Encoding.ASCII.GetString(item.Value);
+                            s = s.Trim(new char[] { '\0' });
+                            dt = DateTime.Parse(s);
+                        }
+                        break;
+
+                    // 0x9003 - 原画像データの生成日時
+                    case 0x9003:
+                        {
+                            string s = System.Text.Encoding.ASCII.GetString(item.Value);
+                            s = s.Trim(new char[] { '\0' });
+                            {
+                                s = System.Text.RegularExpressions.Regex.Replace(
+                                    s,
+    @"^(?<year>(?:\d\d)?\d\d):(?<month>\d\d?):(?<day>\d\d?)",
+    "${year}/${month}/${day}");
+                            }
+                            dt = DateTime.Parse(s);
+                        }
+                        break;
+
+                    // 0x0001-北緯(N) or 南緯(S)(Ascii)
+                    case 0x0001:
+                        sNS = System.Text.Encoding.ASCII.GetString(item.Value);
+                        sNS = sNS.Trim(new char[] { '\0' });
+                        break;
+
+                    // 0x0002-緯度(数値)(Rational)
+                    case 0x0002:
+                        {
+                            if (4 <= item.Len)
+                            {
+                                UInt32[] lng = new UInt32[item.Len / 4];
+
+                                System.Buffer.BlockCopy(item.Value, 0, lng, 0, item.Len);
+
+                                dcLon = lng[0];
+                                dcLon /= lng[1];
+
+                                decimal dPar1 = 60;
+                                for (int index = 1; index < lng.Length / 2; ++index)
+                                {
+                                    decimal dWork = lng[index * 2];
+                                    dWork /= dPar1;
+                                    dWork /= lng[index * 2 + 1];
+
+                                    dcLon += dWork;
+                                    dPar1 *= 60;
+                                }
+
+                                System.Diagnostics.Debug.Print("{0}[{1}]", sNS, dcLon);
+                            }
+                        }
+                        break;
+
+                    // 0x0003-東経(E) or 西経(W)(Ascii)
+                    case 0x0003:
+                        sEW = System.Text.Encoding.ASCII.GetString(item.Value);
+                        sEW = sEW.Trim(new char[] { '\0' });
+                        break;
+                    // 0x0004-経度(数値)(Rational)
+                    case 0x0004:
+                        {
+                            if (4 <= item.Len)
+                            {
+                                UInt32[] lng = new UInt32[item.Len / 4];
+
+                                System.Buffer.BlockCopy(item.Value, 0, lng, 0, item.Len);
+
+                                dcLat = lng[0];
+                                dcLat /= lng[1];
+
+                                decimal dPar1 = 60;
+                                for (int index = 1; index < lng.Length / 2; ++index)
+                                {
+                                    decimal dWork = lng[index * 2];
+                                    dWork /= dPar1;
+                                    dWork /= lng[index * 2 + 1];
+
+                                    dcLat += dWork;
+                                    dPar1 *= 60;
+                                }
+
+                                System.Diagnostics.Debug.Print("{0}[{1}]", sEW, dcLat);
+                            }
+                        }
+                        break;
+                }
+            }
+
+            ListViewItem listItem = new ListViewItem(filePath);
+            listItem.SubItems.Add(dt.ToString());
+            listItem.SubItems.Add(string.Format("{0} {1}, {2} {3}", sNS, dcLon, sEW, dcLat));
+
+            bool blMatch = false;
+            foreach( ListViewItem itema in listView1.Items)
+            {
+                GPXFileItem gpx= itema.Tag as GPXFileItem;
+                if (null == gpx) continue;
+
+                foreach( TrackPointItem trkPt in gpx.Items)
+                {
+                    if( dt == trkPt.Time)
+                    {
+                        blMatch = true;
+
+                        listItem.SubItems.Add(string.Format("{0} {1}, {2} {3}", trkPt.LonMark, trkPt.Lon, trkPt.LatMark, trkPt.Lat));
+
+                        //string s = string.Format("http://maps.google.com/maps?q={0},{1}", trkPt.Lat, trkPt.Lon);
+                        string s = string.Format("http://maps.google.com/maps?q={0},{1}", dcLon, dcLat);
+                        System.Diagnostics.Process.Start(s);
+
+                        break;
+                    }
+                }
+
+                if (blMatch) break;
+            }
+
+            listView2.Items.Add(listItem);
+        }
+
         private byte[] ConvertTo(UInt32[] param1)
         {
             byte[] result = new byte[sizeof(UInt32) * param1.Length];
@@ -134,8 +288,25 @@ namespace JpegExifTest
         {
             if( DialogResult.OK == openFileDialog2.ShowDialog(this))
             {
-                TestFunc2(openFileDialog2.FileName);
+                LoadGpxFile(openFileDialog2.FileName);
             }
+        }
+
+        private void LoadGpxFile(string fileName)
+        {
+            GPXFileItem gpxItem = new GPXFileItem(fileName);
+
+            ListViewItem item = new ListViewItem(gpxItem.StartTime);
+            item.SubItems.Add(gpxItem.EndTime);
+            item.SubItems.Add(gpxItem.PointCount.ToString());
+            item.SubItems.Add(gpxItem.FileName);
+            item.ToolTipText = gpxItem.FilePath;
+            item.Tag = gpxItem;
+
+            _gpxFile.Add(gpxItem);
+
+            listView1.Items.Add(item);
+
         }
 
         private TrackPointItem GetLocData( string trkptXml)
@@ -237,14 +408,6 @@ namespace JpegExifTest
 
             trkPtList.Sort();
 
-            if (_tracks.ContainsKey(filePath))
-            {
-                _tracks[filePath] = trkPtList;
-            }
-            else
-            {
-                _tracks.Add(filePath, trkPtList);
-            }
             return;
         }
     }

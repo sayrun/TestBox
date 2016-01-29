@@ -85,7 +85,7 @@ namespace JpegExifTest
             }
         }
 
-        private delegate void TagAnalyze(UInt16 tagID, UInt16 tagType, UInt32 tagLen, UInt32 tagValue);
+        private delegate void TagAnalyze(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue);
 
         private void TestFunc4(byte[] app1Buffer)
         {
@@ -122,22 +122,31 @@ namespace JpegExifTest
 
             UInt32 offset = convertor.ToUInt32(app1Buffer, 10);
 
-            TagAnalyze funcGPSInfo = delegate (UInt16 tagID, UInt16 tagType, UInt32 tagLen, UInt32 tagValue)
+            TagAnalyze funcGPSInfo = delegate (UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue)
             {
                 GPSInfoCore(tagID, tagType, tagLen, tagValue, app1Buffer, convertor);
             };
 
-            TagAnalyze func = delegate(UInt16 tagID, UInt16 tagType, UInt32 tagLen, UInt32 tagValue) {
-                // EXIF (0x8769)
-                if (0x8769 == tagID)
+            TagAnalyze func = delegate(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue) {
+                switch (tagID)
                 {
-                    TestFuncGPSInfo(app1Buffer, tagValue, convertor);
-                }
+                    // EXIF (0x8769)
+                    case 0x8769:
+                        {
+                            //TestFunc5(app1Buffer, tagValue, convertor, funcGPSInfo);
+                        }
+                        break;
 
-                // GPS Info(0x8825)
-                if (0x8825 == tagID)
-                {
-                    TestFunc5(app1Buffer, tagValue, convertor, funcGPSInfo);
+                    // GPS Info(0x8825)
+                    case 0x8825:
+                        {
+                            UInt32 gpsInfoOffset = convertor.ToUInt32(tagValue, 0);
+                            TestFunc5(app1Buffer, gpsInfoOffset, convertor, funcGPSInfo);
+                        }
+                        break;
+                    default:
+                        //GPSInfoCore(tagID, tagType, tagLen, tagValue, app1Buffer, convertor);
+                        break;
                 }
             };
 
@@ -154,25 +163,22 @@ namespace JpegExifTest
                 index += 2;
 
                 // タグ領域
-                byte[] tagBuffer = new byte[12];
                 for (int lndex = 0; lndex < tagCount; ++lndex)
                 {
-                    System.Buffer.BlockCopy(app1Buffer, index, tagBuffer, 0, tagBuffer.Length);
-                    index += 12;
-
                     // TAG ID
-                    UInt16 tagID = convertor.ToUInt16(tagBuffer, 0);
+                    UInt16 tagID = convertor.ToUInt16(app1Buffer, index);
 
                     // TAG型
-                    UInt16 tagType = convertor.ToUInt16(tagBuffer, 2);
+                    UInt16 tagType = convertor.ToUInt16(app1Buffer, index + 2);
 
                     // TAGデータ長
-                    UInt32 tagLen = convertor.ToUInt32(tagBuffer, 4);
+                    UInt32 tagLen = convertor.ToUInt32(app1Buffer, index + 4);
 
                     // TAG値
-                    UInt32 tagValue = convertor.ToUInt32(tagBuffer, 8);
+                    byte[] tagValue = new byte[4];
+                    System.Buffer.BlockCopy(app1Buffer, index + 8, tagValue, 0, tagValue.Length);
 
-                    System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/0x{3:X8}", tagID, tagType, tagLen, tagValue);
+                    index += 12;
 
                     // delegate
                     analyze(tagID, tagType, tagLen, tagValue);
@@ -191,30 +197,57 @@ namespace JpegExifTest
             }
         }
 
-        private void GPSInfoCore(UInt16 tagID, UInt16 tagType, UInt32 tagLen, UInt32 tagValue, byte[] app1Buffer, DataConvertor convertor)
+        private void GPSInfoCore(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue, byte[] app1Buffer, DataConvertor convertor)
         {
             switch (tagType)
             {
                 // 1:BYTE(1byte)8ビット符合なし整数
+                case 1:
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        if (tagLen <= 4)
+                        {
+                            sb.AppendFormat("{0}", tagValue[0]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",{0}", tagValue[jndex]);
+                            }
+                        }
+                        else
+                        {
+                            int line = 1;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            sb.AppendFormat("0x{0:X2}", app1Buffer[offsetvalue + 8]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",0x{0:X2}", app1Buffer[offsetvalue + 8 + jndex]);
+
+                                line++;
+                                if (16 <= line)
+                                {
+                                    line = 0;
+                                    sb.Append("\r\n");
+                                }
+                            }
+
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
                 // 2:ASCII(?byte)ASCII文字の集合'0.H'で終端
                 case 2:
                     {
                         string value = string.Empty;
                         if (tagLen <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)( 0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
-                                value += (char)tagBuffer[jndex];
+                                value += (char)tagValue[jndex];
                             }
                         }
                         else
                         {
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
                                 value += (char)app1Buffer[offsetvalue + jndex];
@@ -230,20 +263,14 @@ namespace JpegExifTest
                         UInt16[] values = new UInt16[tagLen];
                         if ((tagLen * 2) <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)(0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
-
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
-                                values[jndex] = convertor.ToUInt16(tagBuffer, (2 * jndex));
+                                values[jndex] = convertor.ToUInt16(tagValue, (2 * jndex));
                             }
                         }
                         else
                         {
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
                                 values[jndex] = convertor.ToUInt16(app1Buffer, offsetvalue + (2 * jndex));
@@ -264,17 +291,11 @@ namespace JpegExifTest
                         UInt32[] values = new UInt32[tagLen];
                         if ((tagLen * 4) <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)(0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
-
-                            values[0] = convertor.ToUInt32(tagBuffer, 0);
+                            values[0] = convertor.ToUInt32(tagValue, 0);
                         }
                         else
                         {
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
                                 values[jndex] = convertor.ToUInt32(app1Buffer, offsetvalue + (2 * jndex));
@@ -292,7 +313,7 @@ namespace JpegExifTest
                 // 5:RATIONAL(8byte)LONG２つ、分子／分母
                 case 5:
                     {
-                        int offsetvalue = (int)tagValue + 6;
+                        int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
 
                         UInt32[] values = new UInt32[tagLen * 2];
                         for (int jndex = 0; jndex < values.Length; ++jndex)
@@ -314,22 +335,16 @@ namespace JpegExifTest
                         StringBuilder sb = new StringBuilder();
                         if (tagLen <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)(0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
-
-                            sb.AppendFormat("{0}", tagBuffer[0]);
+                            sb.AppendFormat("{0}", tagValue[0]);
                             for (int jndex = 1; jndex < tagLen; ++jndex)
                             {
-                                sb.AppendFormat(",{0}", tagBuffer[ jndex]);
+                                sb.AppendFormat(",{0}", tagValue[ jndex]);
                             }
                         }
                         else
                         {
                             int line = 1;
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             sb.AppendFormat("0x{0:X2}", app1Buffer[offsetvalue + 8]);
                             for (int jndex = 1; jndex < tagLen; ++jndex)
                             {
@@ -353,17 +368,11 @@ namespace JpegExifTest
                         Int32[] values = new Int32[tagLen];
                         if ((tagLen * 4) <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)(0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
-
-                            values[0] = convertor.ToInt32(tagBuffer, 0);
+                            values[0] = convertor.ToInt32(tagValue, 0);
                         }
                         else
                         {
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             for (int jndex = 0; jndex < tagLen; ++jndex)
                             {
                                 values[jndex] = convertor.ToInt32(app1Buffer, offsetvalue + (2 * jndex));
@@ -381,7 +390,7 @@ namespace JpegExifTest
                 // 10:SRATIONAL(8byte)SLONG２つ、分子／分母
                 case 10:
                     {
-                        int offsetvalue = (int)tagValue + 6;
+                        int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
 
                         Int32[] values = new Int32[tagLen * 2];
                         for (int jndex = 0; jndex < values.Length; ++jndex)
@@ -402,21 +411,15 @@ namespace JpegExifTest
                         StringBuilder sb = new StringBuilder();
                         if (tagLen <= 4)
                         {
-                            byte[] tagBuffer = new byte[4];
-                            tagBuffer[0] = (byte)(0x00FF & (tagValue >> 24));
-                            tagBuffer[1] = (byte)(0x00FF & (tagValue >> 16));
-                            tagBuffer[2] = (byte)(0x00FF & (tagValue >> 8));
-                            tagBuffer[3] = (byte)(0x00FF & (tagValue >> 0));
-
-                            sb.AppendFormat("{0}", tagBuffer[0]);
+                            sb.AppendFormat("{0}", tagValue[0]);
                             for (int jndex = 1; jndex < tagLen; ++jndex)
                             {
-                                sb.AppendFormat(",{0}", tagBuffer[ jndex]);
+                                sb.AppendFormat(",{0}", tagValue[ jndex]);
                             }
                         }
                         else
                         {
-                            int offsetvalue = (int)tagValue + 6;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
                             sb.AppendFormat("{0}", app1Buffer[offsetvalue + 8]);
                             for (int jndex = 1; jndex < tagLen; ++jndex)
                             {

@@ -24,7 +24,652 @@ namespace JpegExifTest
         {
             if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
             {
-                LoadJpeg(openFileDialog1.FileName);
+                TestFunc3(openFileDialog1.FileName);
+                //LoadJpeg(openFileDialog1.FileName);
+            }
+        }
+
+        private void TestFunc3(string fileName)
+        {
+            System.IO.FileInfo fi = new System.IO.FileInfo(fileName);
+
+            long lLen = fi.Length;
+
+            using (System.IO.FileStream fs = new System.IO.FileStream(fileName, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+            {
+                byte[] readBuff = new byte[lLen];
+                fs.Read(readBuff, 0, (int)lLen);
+
+                // JPEG SOI確認
+                if (0xFF != readBuff[0] || 0xD8 != readBuff[1])
+                {
+                    throw new Exception("ファイルフォーマットが違う(JPEG SOI)");
+                }
+                // JPEG EOI確認
+                if( 0xFF != readBuff[lLen - 2] || 0xD9 != readBuff[lLen - 1])
+                {
+                    throw new Exception("ファイルフォーマットが違う(JPEG EOI)");
+                }
+
+                for ( int index = 2; index < (int)lLen; ++index)
+                {
+                    // Marker
+                    byte marker1 = readBuff[index];
+                    byte marker2 = readBuff[++index];
+
+                    if (0xff == marker1 && 0xD9 == marker2) break;
+                    if( 0xff == marker1 && 0xE1 == marker2)
+                    {
+                        // APP1 size
+                        byte size1 = readBuff[index + 1];
+                        byte size2 = readBuff[index + 2];
+                        UInt16 app1Size = (UInt16)size1;
+                        app1Size <<= 8;
+                        app1Size |= (UInt16)size2;
+
+                        byte[] app1Buffer = new byte[app1Size];
+
+                        System.Buffer.BlockCopy(readBuff, index + 3, app1Buffer, 0, app1Size);
+
+                        TestFunc4(app1Buffer);
+                    }
+
+                    // Offset get
+                    byte offset1 = readBuff[index + 1];
+                    byte offset2 = readBuff[index + 2];
+                    UInt16 offset = (UInt16)offset1;
+                    offset <<= 8;
+                    offset |= (UInt16)offset2;
+                    index += offset;
+                }
+            }
+        }
+
+        private delegate void TagAnalyze(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue);
+
+        private void TestFunc4(byte[] app1Buffer)
+        {
+            if ('E' != app1Buffer[0]) return;
+            if ('x' != app1Buffer[1]) return;
+            if ('i' != app1Buffer[2]) return;
+            if ('f' != app1Buffer[3]) return;
+            if (0x00 != app1Buffer[4]) return;
+            if (0x00 != app1Buffer[5]) return;
+
+            DataConvertor convertor;
+            if ( 0x4D == app1Buffer[6] && 0x4D == app1Buffer[7])
+            {
+                convertor = new DataConvertor(DataConvertor.ENDIAN.BIG);
+
+                // TIFF識別コード
+                if (0x00 != app1Buffer[8]) return;
+                if (0x2A != app1Buffer[9]) return;
+
+            }
+            else if(0x49 == app1Buffer[6] && 0x49 == app1Buffer[7])
+            {
+                convertor = new DataConvertor(DataConvertor.ENDIAN.LITTLE);
+
+                // TIFF識別コード
+                if (0x00 != app1Buffer[9]) return;
+                if (0x2A != app1Buffer[8]) return;
+            }
+            else
+            {
+                throw new Exception("Endian不明");
+            }
+
+
+            UInt32 offset = convertor.ToUInt32(app1Buffer, 10);
+
+            TagAnalyze funcGPSInfo = delegate (UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue)
+            {
+                GPSInfoCore(tagID, tagType, tagLen, tagValue, app1Buffer, convertor);
+            };
+
+            TagAnalyze func = delegate(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue) {
+                switch (tagID)
+                {
+                    // EXIF (0x8769)
+                    case 0x8769:
+                        {
+                            //TestFunc5(app1Buffer, tagValue, convertor, funcGPSInfo);
+                        }
+                        break;
+
+                    // GPS Info(0x8825)
+                    case 0x8825:
+                        {
+                            UInt32 gpsInfoOffset = convertor.ToUInt32(tagValue, 0);
+                            TestFunc5(app1Buffer, gpsInfoOffset, convertor, funcGPSInfo);
+                        }
+                        break;
+                    default:
+                        //GPSInfoCore(tagID, tagType, tagLen, tagValue, app1Buffer, convertor);
+                        break;
+                }
+            };
+
+            TestFunc5( app1Buffer, offset, convertor, func);
+
+        }
+
+        private void TestFunc5(byte[] app1Buffer, UInt32 offset, DataConvertor convertor, TagAnalyze analyze)
+        {
+            for (int index = ((int)offset) + 6; index < app1Buffer.Length; ++index)
+            {
+                // タグの数
+                UInt16 tagCount = convertor.ToUInt16(app1Buffer, index);
+                index += 2;
+
+                // タグ領域
+                for (int lndex = 0; lndex < tagCount; ++lndex)
+                {
+                    // TAG ID
+                    UInt16 tagID = convertor.ToUInt16(app1Buffer, index);
+
+                    // TAG型
+                    UInt16 tagType = convertor.ToUInt16(app1Buffer, index + 2);
+
+                    // TAGデータ長
+                    UInt32 tagLen = convertor.ToUInt32(app1Buffer, index + 4);
+
+                    // TAG値
+                    byte[] tagValue = new byte[4];
+                    System.Buffer.BlockCopy(app1Buffer, index + 8, tagValue, 0, tagValue.Length);
+
+                    index += 12;
+
+                    // delegate
+                    analyze(tagID, tagType, tagLen, tagValue);
+                }
+
+                // 次のIFDへのポインタ
+                UInt32 nextPointer = convertor.ToUInt32( app1Buffer, index);
+                index += 4;
+
+                if (0 == nextPointer)
+                {
+                    break;
+                }
+
+                index = (((int)nextPointer) - 1) + 6;
+            }
+        }
+
+        private void GPSInfoCore(UInt16 tagID, UInt16 tagType, UInt32 tagLen, byte[] tagValue, byte[] app1Buffer, DataConvertor convertor)
+        {
+            switch (tagType)
+            {
+                // 1:BYTE(1byte)8ビット符合なし整数
+                case 1:
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        if (tagLen <= 4)
+                        {
+                            sb.AppendFormat("{0}", tagValue[0]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",{0}", tagValue[jndex]);
+                            }
+                        }
+                        else
+                        {
+                            int line = 1;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            sb.AppendFormat("0x{0:X2}", app1Buffer[offsetvalue + 8]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",0x{0:X2}", app1Buffer[offsetvalue + 8 + jndex]);
+
+                                line++;
+                                if (16 <= line)
+                                {
+                                    line = 0;
+                                    sb.Append("\r\n");
+                                }
+                            }
+
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 2:ASCII(?byte)ASCII文字の集合'0.H'で終端
+                case 2:
+                    {
+                        string value = string.Empty;
+                        if (tagLen <= 4)
+                        {
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                value += (char)tagValue[jndex];
+                            }
+                        }
+                        else
+                        {
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                value += (char)app1Buffer[offsetvalue + jndex];
+                            }
+                        }
+                        value = value.TrimEnd(new char[] { '\0' });
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, value);
+                    }
+                    break;
+                // 3:SHORT(2byte)16ビット符合なし整数
+                case 3:
+                    {
+                        UInt16[] values = new UInt16[tagLen];
+                        if ((tagLen * 2) <= 4)
+                        {
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                values[jndex] = convertor.ToUInt16(tagValue, (2 * jndex));
+                            }
+                        }
+                        else
+                        {
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                values[jndex] = convertor.ToUInt16(app1Buffer, offsetvalue + (2 * jndex));
+                            }
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("{0}", values[0]);
+                        for (int jndex = 1; jndex < values.Length; ++jndex)
+                        {
+                            sb.AppendFormat(",{0}", values[jndex]);
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 4:LONG(4byte)32ビット符合なし整数
+                case 4:
+                    {
+                        UInt32[] values = new UInt32[tagLen];
+                        if ((tagLen * 4) <= 4)
+                        {
+                            values[0] = convertor.ToUInt32(tagValue, 0);
+                        }
+                        else
+                        {
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                values[jndex] = convertor.ToUInt32(app1Buffer, offsetvalue + (2 * jndex));
+                            }
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("0x{0:X4}", values[0]);
+                        for (int jndex = 1; jndex < values.Length; ++jndex)
+                        {
+                            sb.AppendFormat(",0x{0:X4}", values[jndex]);
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 5:RATIONAL(8byte)LONG２つ、分子／分母
+                case 5:
+                    {
+                        int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+
+                        UInt32[] values = new UInt32[tagLen * 2];
+                        for (int jndex = 0; jndex < values.Length; ++jndex)
+                        {
+                            values[jndex] = convertor.ToUInt32(app1Buffer, offsetvalue + (jndex * 4));
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("{0}/{1}", values[0], values[1]);
+                        for (int jndex = 2; jndex < values.Length; jndex += 2)
+                        {
+                            sb.AppendFormat(",{0}/{1}", values[jndex], values[jndex + 1]);
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 7:UNDEFINED(?byte)未定義のバイト列
+                case 7:
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        if (tagLen <= 4)
+                        {
+                            sb.AppendFormat("{0}", tagValue[0]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",{0}", tagValue[ jndex]);
+                            }
+                        }
+                        else
+                        {
+                            int line = 1;
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            sb.AppendFormat("0x{0:X2}", app1Buffer[offsetvalue + 8]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",0x{0:X2}", app1Buffer[offsetvalue + 8 + jndex]);
+
+                                line++;
+                                if (16 <= line)
+                                {
+                                    line = 0;
+                                    sb.Append("\r\n");
+                                }
+                            }
+
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 9:SLONG(4byte)32ビット符合あり整数
+                case 9:
+                    {
+                        Int32[] values = new Int32[tagLen];
+                        if ((tagLen * 4) <= 4)
+                        {
+                            values[0] = convertor.ToInt32(tagValue, 0);
+                        }
+                        else
+                        {
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            for (int jndex = 0; jndex < tagLen; ++jndex)
+                            {
+                                values[jndex] = convertor.ToInt32(app1Buffer, offsetvalue + (2 * jndex));
+                            }
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("0x{0:X4}", values[0]);
+                        for (int jndex = 1; jndex < values.Length; ++jndex)
+                        {
+                            sb.AppendFormat(",0x{0:X4}", values[jndex]);
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                // 10:SRATIONAL(8byte)SLONG２つ、分子／分母
+                case 10:
+                    {
+                        int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+
+                        Int32[] values = new Int32[tagLen * 2];
+                        for (int jndex = 0; jndex < values.Length; ++jndex)
+                        {
+                            values[jndex] = convertor.ToInt32(app1Buffer, offsetvalue + (jndex * 4));
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("{0}/{1}", values[0], values[1]);
+                        for (int jndex = 2; jndex < values.Length; jndex += 2)
+                        {
+                            sb.AppendFormat(",{0}/{1}", values[jndex], values[jndex + 1]);
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+                default:
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        if (tagLen <= 4)
+                        {
+                            sb.AppendFormat("{0}", tagValue[0]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",{0}", tagValue[ jndex]);
+                            }
+                        }
+                        else
+                        {
+                            int offsetvalue = (int)(convertor.ToUInt32(tagValue, 0)) + 6;
+                            sb.AppendFormat("{0}", app1Buffer[offsetvalue + 8]);
+                            for (int jndex = 1; jndex < tagLen; ++jndex)
+                            {
+                                sb.AppendFormat(",{0}", app1Buffer[offsetvalue + 8 + jndex]);
+                            }
+
+                        }
+                        System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                    }
+                    break;
+            }
+        }
+
+        private void TestFuncGPSInfo( byte[] app1Buffer, UInt32 offset, DataConvertor convertor)
+        {
+            for (int index = ((int)offset) + 6; index < app1Buffer.Length; ++index)
+            {
+                // タグの数
+                UInt16 tagCount = convertor.ToUInt16(app1Buffer, index);
+                index += 2;
+
+                // タグ領域
+                byte[] tagBuffer = new byte[12];
+                for (int lndex = 0; lndex < tagCount; ++lndex)
+                {
+                    System.Buffer.BlockCopy(app1Buffer, index, tagBuffer, 0, tagBuffer.Length);
+                    index += 12;
+
+                    UInt16 tagID = convertor.ToUInt16(tagBuffer, 0);
+
+                    UInt16 tagType = convertor.ToUInt16(tagBuffer, 2);
+
+                    UInt32 tagLen = convertor.ToUInt32(tagBuffer, 4);
+
+                    UInt32 tagValue = convertor.ToUInt32(tagBuffer, 8);
+
+                    switch (tagType)
+                    {
+                        // 1:BYTE(1byte)8ビット符合なし整数
+                        // 2:ASCII(?byte)ASCII文字の集合'0.H'で終端
+                        case 2:
+                            {
+                                string value = string.Empty;
+                                if (tagLen <= 4)
+                                {
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        value += (char)tagBuffer[8 + jndex];
+                                    }
+                                }
+                                else
+                                {
+                                    int offsetvalue = (int)tagValue + 6;
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        value += (char)app1Buffer[offsetvalue + jndex];
+                                    }
+                                }
+                                value = value.TrimEnd(new char[] { '\0' });
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, value);
+                            }
+                            break;
+                        // 3:SHORT(2byte)16ビット符合なし整数
+                        case 3:
+                            {
+                                UInt16[] values = new UInt16[tagLen];
+                                if ((tagLen * 2) <= 4)
+                                {
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        values[jndex] = convertor.ToUInt16(tagBuffer, 8 + (2 * jndex));
+                                    }
+                                }
+                                else
+                                {
+                                    int offsetvalue = (int)tagValue + 6;
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        values[jndex] = convertor.ToUInt16(app1Buffer, offsetvalue + (2 * jndex));
+                                    }
+                                }
+                                StringBuilder sb = new StringBuilder();
+                                sb.AppendFormat("{0}", values[0]);
+                                for (int jndex = 1; jndex < values.Length; ++jndex)
+                                {
+                                    sb.AppendFormat(",{0}", values[jndex]);
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        // 4:LONG(4byte)32ビット符合なし整数
+                        case 4:
+                            {
+                                UInt32[] values = new UInt32[tagLen];
+                                if ( (tagLen * 4) <= 4)
+                                {
+                                    values[0] = convertor.ToUInt32(tagBuffer, 8);
+                                }
+                                else
+                                {
+                                    int offsetvalue = (int)tagValue + 6;
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        values[jndex] = convertor.ToUInt32(app1Buffer, offsetvalue + (2 * jndex));
+                                    }
+                                }
+                                StringBuilder sb = new StringBuilder();
+                                sb.AppendFormat("0x{0:X4}", values[0]);
+                                for (int jndex = 1; jndex < values.Length; ++jndex)
+                                {
+                                    sb.AppendFormat(",0x{0:X4}", values[jndex]);
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        // 5:RATIONAL(8byte)LONG２つ、分子／分母
+                        case 5:
+                            {
+                                int offsetvalue = (int)tagValue + 6;
+
+                                UInt32[] values = new UInt32[tagLen * 2];
+                                for (int jndex = 0; jndex < values.Length; ++jndex)
+                                {
+                                    values[jndex] = convertor.ToUInt32(app1Buffer, offsetvalue + (jndex * 4));
+                                }
+                                StringBuilder sb = new StringBuilder();
+                                sb.AppendFormat("{0}/{1}", values[0], values[1]);
+                                for (int jndex = 2; jndex < values.Length; jndex += 2)
+                                {
+                                    sb.AppendFormat(",{0}/{1}", values[jndex], values[jndex + 1]);
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        // 7:UNDEFINED(?byte)未定義のバイト列
+                        case 7:
+                            {
+                                StringBuilder sb = new StringBuilder();
+                                if (tagLen <= 4)
+                                {
+                                    sb.AppendFormat("{0}", tagBuffer[8]);
+                                    for (int jndex = 1; jndex < tagLen; ++jndex)
+                                    {
+                                        sb.AppendFormat(",{0}", tagBuffer[8 + jndex]);
+                                    }
+                                }
+                                else
+                                {
+                                    int line = 1;
+                                    int offsetvalue = (int)tagValue + 6;
+                                    sb.AppendFormat("0x{0:X2}", app1Buffer[offsetvalue + 8]);
+                                    for (int jndex = 1; jndex < tagLen; ++jndex)
+                                    {
+                                        sb.AppendFormat(",0x{0:X2}", app1Buffer[offsetvalue + 8 + jndex]);
+
+                                        line++;
+                                        if( 16 <= line)
+                                        {
+                                            line = 0;
+                                            sb.Append("\r\n");
+                                        }
+                                    }
+
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        // 9:SLONG(4byte)32ビット符合あり整数
+                        case 9:
+                            {
+                                Int32[] values = new Int32[tagLen];
+                                if ((tagLen * 4) <= 4)
+                                {
+                                    values[0] = convertor.ToInt32(tagBuffer, 8);
+                                }
+                                else
+                                {
+                                    int offsetvalue = (int)tagValue + 6;
+                                    for (int jndex = 0; jndex < tagLen; ++jndex)
+                                    {
+                                        values[jndex] = convertor.ToInt32(app1Buffer, offsetvalue + (2 * jndex));
+                                    }
+                                }
+                                StringBuilder sb = new StringBuilder();
+                                sb.AppendFormat("0x{0:X4}", values[0]);
+                                for (int jndex = 1; jndex < values.Length; ++jndex)
+                                {
+                                    sb.AppendFormat(",0x{0:X4}", values[jndex]);
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        // 10:SRATIONAL(8byte)SLONG２つ、分子／分母
+                        case 10:
+                            {
+                                int offsetvalue = (int)tagValue + 6;
+
+                                Int32[] values = new Int32[tagLen * 2];
+                                for (int jndex = 0; jndex < values.Length; ++jndex)
+                                {
+                                    values[jndex] = convertor.ToInt32(app1Buffer, offsetvalue + (jndex * 4));
+                                }
+                                StringBuilder sb = new StringBuilder();
+                                sb.AppendFormat("{0}/{1}", values[0], values[1]);
+                                for (int jndex = 2; jndex < values.Length; jndex += 2)
+                                {
+                                    sb.AppendFormat(",{0}/{1}", values[jndex], values[jndex + 1]);
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                        default:
+                            {
+                                StringBuilder sb = new StringBuilder();
+                                if( tagLen <= 4)
+                                {
+                                    sb.AppendFormat("{0}", tagBuffer[8]);
+                                    for (int jndex = 1; jndex < tagLen; ++jndex)
+                                    {
+                                        sb.AppendFormat(",{0}", tagBuffer[8 + jndex]);
+                                    }
+                                }
+                                else
+                                {
+                                    int offsetvalue = (int)tagValue + 6;
+                                    sb.AppendFormat("{0}", app1Buffer[offsetvalue + 8]);
+                                    for (int jndex = 1; jndex < tagLen; ++jndex)
+                                    {
+                                        sb.AppendFormat(",{0}", app1Buffer[offsetvalue + 8 + jndex]);
+                                    }
+
+                                }
+                                System.Diagnostics.Debug.Print("0x{0:X4}(0x{1:X4}) - 0x{2:X8}/{3}", tagID, tagType, tagLen, sb.ToString());
+                            }
+                            break;
+                    }
+
+
+                }
+
+                // 次のIFDへのポインタ
+                UInt32 nextPointer = convertor.ToUInt32(app1Buffer, index);
+                index += 4;
+
+                if (0 == nextPointer)
+                {
+                    break;
+                }
+
+                index = (((int)nextPointer) - 1) + 6;
             }
         }
 

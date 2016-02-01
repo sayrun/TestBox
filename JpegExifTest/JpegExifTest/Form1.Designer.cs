@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.openJpegFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.button1 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
@@ -41,20 +41,21 @@
             this.columnHeader4 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.listView2 = new System.Windows.Forms.ListView();
             this.columnHeader5 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader8 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader6 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader7 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader8 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // openFileDialog1
+            // openJpegFileDialog
             // 
-            this.openFileDialog1.DefaultExt = "jpg";
-            this.openFileDialog1.FileName = "openFileDialog1";
-            this.openFileDialog1.Filter = "jpeg(*.jpg)|*.jpg|ALL(*.*)|*.*";
+            this.openJpegFileDialog.DefaultExt = "jpg";
+            this.openJpegFileDialog.Filter = "jpeg(*.jpg)|*.jpg|ALL(*.*)|*.*";
+            this.openJpegFileDialog.Multiselect = true;
             // 
             // button1
             // 
@@ -62,7 +63,7 @@
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(75, 23);
             this.button1.TabIndex = 0;
-            this.button1.Text = "button1";
+            this.button1.Text = "JPG File";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
@@ -166,23 +167,20 @@
             this.columnHeader5.Text = "File Name";
             this.columnHeader5.Width = 142;
             // 
+            // columnHeader8
+            // 
+            this.columnHeader8.Text = "Date Teime";
+            this.columnHeader8.Width = 197;
+            // 
             // columnHeader6
             // 
-            this.columnHeader6.DisplayIndex = 2;
             this.columnHeader6.Text = "current";
             this.columnHeader6.Width = 169;
             // 
             // columnHeader7
             // 
-            this.columnHeader7.DisplayIndex = 3;
             this.columnHeader7.Text = "new";
             this.columnHeader7.Width = 165;
-            // 
-            // columnHeader8
-            // 
-            this.columnHeader8.DisplayIndex = 1;
-            this.columnHeader8.Text = "Date Teime";
-            this.columnHeader8.Width = 197;
             // 
             // Form1
             // 
@@ -197,6 +195,7 @@
             this.panel1.ResumeLayout(false);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -204,7 +203,7 @@
 
         #endregion
 
-        private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.OpenFileDialog openJpegFileDialog;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.OpenFileDialog openFileDialog2;

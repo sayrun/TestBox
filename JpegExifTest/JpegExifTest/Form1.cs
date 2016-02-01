@@ -22,9 +22,16 @@ namespace JpegExifTest
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
+            if (openJpegFileDialog.ShowDialog(this) == DialogResult.OK)
             {
-                TestFunc3(openFileDialog1.FileName);
+                foreach( string fileName in openJpegFileDialog.FileNames)
+                {
+                    System.Diagnostics.Debug.Print("◆◆◆◆ {0}", fileName);
+
+                    TestFunc3(openJpegFileDialog.FileName);
+                }
+
+                
                 //LoadJpeg(openFileDialog1.FileName);
             }
         }
@@ -941,8 +948,8 @@ namespace JpegExifTest
         {
             GPXFileItem gpxItem = new GPXFileItem(fileName);
 
-            ListViewItem item = new ListViewItem(gpxItem.StartTime);
-            item.SubItems.Add(gpxItem.EndTime);
+            ListViewItem item = new ListViewItem(gpxItem.StartTime.ToString());
+            item.SubItems.Add(gpxItem.EndTime.ToString());
             item.SubItems.Add(gpxItem.PointCount.ToString());
             item.SubItems.Add(gpxItem.FileName);
             item.ToolTipText = gpxItem.FilePath;

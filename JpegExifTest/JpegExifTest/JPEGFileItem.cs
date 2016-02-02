@@ -14,12 +14,14 @@ namespace JpegExifTest
         private DateTime _targetdate;
 
         private decimal _dcLon = 0;
-        private UInt32[] _londitude;
+        private UInt32[] _longitude;
         private string _lonFlag;
 
         private decimal _dcLat = 0;
         private UInt32[] _latitude;
         private string _latFlag;
+
+        private const int DISPLAY_LENGTH = 4;
 
         public JPEGFileItem( string filePath)
         {
@@ -36,10 +38,19 @@ namespace JpegExifTest
             }
         }
 
+        public string FileName
+        {
+            get
+            {
+                return System.IO.Path.GetFileName(_filePath);
+            }
+        }
+
+
         /// <summary>
         /// 撮影時間
         /// </summary>
-        public DateTime CreateTime
+        public DateTime DateTimeOriginal
         {
             get
             {
@@ -48,24 +59,160 @@ namespace JpegExifTest
         }
 
         /// <summary>
-        /// 経度
+        /// 経度生値
         /// </summary>
-        public decimal Longitude
+        public UInt32[] LongitudeRaw
         {
             get
             {
-                return _dcLon;
+                return _longitude;
+            }
+
+            set
+            {
+                _longitude = null;
+                _longitude = new UInt32[value.Length];
+                System.Buffer.BlockCopy(value, 0, _longitude, 0, _longitude.Length);
+            }
+        }
+
+        public enum LongitudeFlag
+        {
+            INVALID,
+            NORTH,
+            SOUTH
+        }
+
+        public LongitudeFlag LongitudeRef
+        {
+            get
+            {
+                if( 0 == string.Compare( _lonFlag,"N",true ))
+                {
+                    return LongitudeFlag.NORTH;
+                }
+                if (0 == string.Compare(_lonFlag, "S", true))
+                {
+                    return LongitudeFlag.SOUTH;
+                }
+                return LongitudeFlag.INVALID;
+            }
+
+            set
+            {
+                if (LongitudeFlag.INVALID == value)
+                    throw new Exception("設定できなよ");
+
+                if(LongitudeFlag.NORTH == value)
+                {
+                    _lonFlag = "N";
+                }
+                else
+                {
+                    _lonFlag = "S";
+                }
+            }
+        }
+
+        /// <summary>
+        /// 経度
+        /// </summary>
+        public string Longitude
+        {
+            get
+            {
+                string result = _dcLon.ToString();
+
+                int index = result.IndexOf('.');
+                if (0 < index && result.Length > (index + DISPLAY_LENGTH))
+                {
+                    result = result.Substring(0, index + DISPLAY_LENGTH);
+                }
+
+                return result;
+            }
+        }
+
+        public enum LatitudeFlag
+        {
+            INVALID,
+            EAST,
+            WEST
+        }
+
+        public LatitudeFlag LatitudeRef
+        {
+            get
+            {
+                if (0 == string.Compare(_latFlag, "E", true))
+                {
+                    return LatitudeFlag.EAST;
+                }
+                if (0 == string.Compare(_latFlag, "W", true))
+                {
+                    return LatitudeFlag.WEST;
+                }
+                return LatitudeFlag.INVALID;
+            }
+
+            set
+            {
+                if (LatitudeFlag.INVALID == value)
+                    throw new Exception("設定できなよ");
+
+                if (LatitudeFlag.EAST == value)
+                {
+                    _latFlag = "E";
+                }
+                else
+                {
+                    _latFlag = "W";
+                }
+            }
+        }
+
+        public string GPSPosition
+        {
+            get
+            {
+                return string.Format("{0}, {1}", this.Longitude, this.Latitude);
+            }
+        }
+
+        /// <summary>
+        /// 緯度生値
+        /// </summary>
+        public UInt32[] LatitudeRaw
+        {
+            get
+            {
+                return _latitude;
+            }
+
+            set
+            {
+                _latitude = null;
+                _latitude = new UInt32[value.Length];
+                System.Buffer.BlockCopy(value, 0, _latitude, 0, _latitude.Length);
             }
         }
 
         /// <summary>
         /// 緯度
         /// </summary>
-        public decimal Latitude
+        public string Latitude
         {
             get
             {
-                return _dcLat;
+                string result = _dcLat.ToString();
+
+                int index = result.IndexOf('.');
+                if (0 < index && result.Length > (index + DISPLAY_LENGTH))
+                {
+                    result = result.Substring(0, index + DISPLAY_LENGTH);
+                }
+
+                return result;
             }
         }
 
@@ -220,7 +367,7 @@ namespace JpegExifTest
 
             _latitude = uLat;
             _latFlag = sNS;
-            _londitude = uLon;
+            _longitude = uLon;
             _lonFlag = sEW;
 
 #if false

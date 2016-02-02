@@ -45,8 +45,8 @@ namespace JpegExifTest
             _jpgFile.Add(item);
 
             ListViewItem listItem = new ListViewItem( System.IO.Path.GetFileName( item.FilePath));
-            listItem.SubItems.Add(item.CreateTime.ToString());
-            listItem.SubItems.Add(string.Format("{0}, {1}", item.Longitude, item.Latitude));
+            listItem.SubItems.Add(item.DateTimeOriginal.ToString());
+            listItem.SubItems.Add(item.GPSPosition);
             listView2.Items.Add(listItem);
         }
 

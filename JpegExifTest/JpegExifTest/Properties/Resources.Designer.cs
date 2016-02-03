@@ -59,5 +59,33 @@ namespace JpegExifTest.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   &lt;html&gt;
+        ///&lt;script type=&quot;text/javascript&quot; src=&quot;http://maps.google.com/maps/api/js?sensor=false&quot;&gt;&lt;/script&gt;
+        ///&lt;script type=&quot;text/javascript&quot;&gt;
+        ///var map;
+        ///
+        ///function initialize() {
+        ///	// 東京都庁の座標
+        ///	var y = 35.689634;
+        ///	var x = 139.692101;
+        ///	var latlng = new google.maps.LatLng(y, x);
+        ///	var opts = {
+        ///			zoom: 14,
+        ///			center: latlng,
+        ///			mapTypeId: google.maps.MapTypeId.ROADMAP
+        ///		};
+        ///	map = new google.maps.Map(document.getElementById(&quot;gmap&quot;), opts);
+        ///}
+        ///
+        ///function movePos( x, y) {
+        ///	var pos = new google.maps.LatLng(y,  [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string googlemapsHTML {
+            get {
+                return ResourceManager.GetString("googlemapsHTML", resourceCulture);
+            }
+        }
     }
 }

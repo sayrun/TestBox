@@ -72,19 +72,29 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataConvertor.cs" />
-    <Compile Include="Form1.cs">
+    <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <Compile Include="MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="GPSLocation.cs" />
     <Compile Include="GPXFileItem.cs" />
     <Compile Include="JPEGFileItem.cs" />
+    <Compile Include="PreViewForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PreViewForm.Designer.cs">
+      <DependentUpon>PreViewForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TrackPointItem.cs" />
-    <EmbeddedResource Include="Form1.resx">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <EmbeddedResource Include="MainForm.resx">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PreViewForm.resx">
+      <DependentUpon>PreViewForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

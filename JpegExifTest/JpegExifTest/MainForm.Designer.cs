@@ -92,7 +92,7 @@
             this.panel1.Controls.Add(this.splitContainer1);
             this.panel1.Location = new System.Drawing.Point(12, 41);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(700, 258);
+            this.panel1.Size = new System.Drawing.Size(700, 354);
             this.panel1.TabIndex = 3;
             // 
             // splitContainer1
@@ -109,8 +109,8 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.jpegListView);
-            this.splitContainer1.Size = new System.Drawing.Size(700, 258);
-            this.splitContainer1.SplitterDistance = 137;
+            this.splitContainer1.Size = new System.Drawing.Size(700, 354);
+            this.splitContainer1.SplitterDistance = 187;
             this.splitContainer1.TabIndex = 0;
             // 
             // gpxListView
@@ -125,7 +125,7 @@
             this.gpxListView.Location = new System.Drawing.Point(0, 0);
             this.gpxListView.Name = "gpxListView";
             this.gpxListView.ShowItemToolTips = true;
-            this.gpxListView.Size = new System.Drawing.Size(700, 137);
+            this.gpxListView.Size = new System.Drawing.Size(700, 187);
             this.gpxListView.TabIndex = 0;
             this.gpxListView.UseCompatibleStateImageBehavior = false;
             this.gpxListView.View = System.Windows.Forms.View.Details;
@@ -133,10 +133,12 @@
             // columnHeader1
             // 
             this.columnHeader1.Text = "Start";
+            this.columnHeader1.Width = 156;
             // 
             // columnHeader2
             // 
             this.columnHeader2.Text = "End";
+            this.columnHeader2.Width = 177;
             // 
             // columnHeader3
             // 
@@ -158,7 +160,7 @@
             this.jpegListView.FullRowSelect = true;
             this.jpegListView.Location = new System.Drawing.Point(0, 0);
             this.jpegListView.Name = "jpegListView";
-            this.jpegListView.Size = new System.Drawing.Size(700, 117);
+            this.jpegListView.Size = new System.Drawing.Size(700, 163);
             this.jpegListView.TabIndex = 0;
             this.jpegListView.UseCompatibleStateImageBehavior = false;
             this.jpegListView.View = System.Windows.Forms.View.Details;
@@ -188,7 +190,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(724, 311);
+            this.ClientSize = new System.Drawing.Size(724, 407);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.button1);

@@ -50,6 +50,11 @@ namespace JpegExifTest
             System.Buffer.BlockCopy(latitude, 0, _latitude, 0, _latitude.Length * sizeof(UInt32));
         }
 
+        public bool HasLocation()
+        {
+            return (0 < _longitude.Length && 0 < _latitude.Length);
+        }
+
         /// <summary>
         /// 経度生値
         /// </summary>

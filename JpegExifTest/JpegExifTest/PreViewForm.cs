@@ -26,18 +26,31 @@ namespace JpegExifTest
             Bitmap bmp = new Bitmap(_fileItem.FilePath);
             pictureBox1.Image = bmp;
 
-            currentMap.DocumentText = Properties.Resources.googlemapsHTML;
-            newMap.DocumentText = Properties.Resources.googlemapsHTML;
+            if (_fileItem.CurrentLocation.HasLocation())
+            {
+                currentMap.DocumentText = Properties.Resources.googlemapsHTML;
+            }
+
+            if (_fileItem.NewLocation.HasLocation())
+            {
+                newMap.DocumentText = Properties.Resources.googlemapsHTML;
+            }
         }
 
         private void currentMap_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
         {
-            currentMap.Url = new Uri(string.Format("javascript:movePos({0},{1});", _fileItem.CurrentLocation.Longitude, _fileItem.CurrentLocation.Latitude));
+            if (_fileItem.CurrentLocation.HasLocation())
+            {
+                currentMap.Url = new Uri(string.Format("javascript:movePos({0},{1});", _fileItem.CurrentLocation.Longitude, _fileItem.CurrentLocation.Latitude));
+            }
         }
 
         private void newMap_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
         {
-            newMap.Url = new Uri(string.Format("javascript:movePos({0},{1});", _fileItem.NewLocation.Longitude, _fileItem.NewLocation.Latitude));
+            if(_fileItem.NewLocation.HasLocation())
+            {
+                newMap.Url = new Uri(string.Format("javascript:movePos({0},{1});", _fileItem.NewLocation.Longitude, _fileItem.NewLocation.Latitude));
+            }
         }
     }
 }

@@ -24,6 +24,7 @@ namespace JpegExifTest
 
         private void button1_Click(object sender, EventArgs e)
         {
+            openJpegFileDialog.InitialDirectory = System.Environment.GetFolderPath(Environment.SpecialFolder.MyPictures); 
             if (openJpegFileDialog.ShowDialog(this) == DialogResult.OK)
             {
                 foreach (string fileName in openJpegFileDialog.FileNames)
@@ -32,9 +33,6 @@ namespace JpegExifTest
                     TestFunc3(fileName);
                     LoadJpeg(fileName);
                 }
-
-                
-                //LoadJpeg(openFileDialog1.FileName);
             }
         }
 
@@ -73,7 +71,14 @@ namespace JpegExifTest
             ListViewItem listItem = new ListViewItem( System.IO.Path.GetFileName( item.FilePath));
             listItem.SubItems.Add(item.DateTimeOriginal.ToString());
             listItem.SubItems.Add(item.CurrentLocation.ToString());
-            listItem.SubItems.Add(item.NewLocation.ToString());
+            if (item.NewLocation.HasLocation())
+            {
+                listItem.SubItems.Add(item.NewLocation.ToString());
+            }
+            else
+            {
+                listItem.SubItems.Add(string.Empty);
+            }
             listItem.Tag = item;
             jpegListView.Items.Add(listItem);
         }
@@ -827,7 +832,8 @@ namespace JpegExifTest
 
         private void button2_Click(object sender, EventArgs e)
         {
-            if( DialogResult.OK == openFileDialog2.ShowDialog(this))
+            openFileDialog2.InitialDirectory = System.Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+            if ( DialogResult.OK == openFileDialog2.ShowDialog(this))
             {
                 LoadGpxFile(openFileDialog2.FileName);
             }
@@ -960,10 +966,6 @@ namespace JpegExifTest
 
             JPEGFileItem jpegItem = item.Tag as JPEGFileItem;
 
-            /*
-            string s = string.Format("http://maps.google.com/maps?q={0},{1}", jpegItem.CurrentLocation.Latitude, jpegItem.CurrentLocation.Longitude);
-            System.Diagnostics.Process.Start(s);
-            */
             PreViewForm pv = new PreViewForm(jpegItem);
             pv.ShowDialog(this);
         }

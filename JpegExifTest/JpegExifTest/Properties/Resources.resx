@@ -142,7 +142,7 @@ function movePos( x, y) {
 	map.setCenter(pos);
 }
 &lt;/script&gt;
-&lt;body onload="initialize()"&gt;
+&lt;body topmargin="0" leftmargin="0" bottommargin="0" rightmargin="0" onload="initialize()"&gt;
 &lt;div id="gmap" style="width:100%; height:100%"&gt;&lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;</value>

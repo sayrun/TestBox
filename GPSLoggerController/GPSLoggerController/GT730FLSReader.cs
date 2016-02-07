@@ -21,7 +21,7 @@ namespace GPSLoggerController
 
         private const byte END_OF_SEQUENCE_1 = 0x0d;
         private const byte END_OF_SEQUENCE_2 = 0x0a;
-
+        private const UInt16 MASK_LOBYTE = 0x00FF;
 
         public GT730FLSReader(string portName)
         {
@@ -36,24 +36,15 @@ namespace GPSLoggerController
             _com.Open();
         }
 
-        public enum BaudRate
+        private enum RESULT
         {
-            BaudRate_4800 = 0,
-            BaudRate_9600 = 1,
-            BaudRate_19200 = 2,
-            BaudRate_38400 = 3,
-            BaudRate_57600 = 4,
-            BaudRate_115200 = 5
+            RESULT_ACK,
+            RESULT_NACK
         };
 
-        public void setBaudRate(BaudRate rate)
+        private RESULT waitResult(Payload.MessageID id)
         {
-            Payload p = new Payload(Payload.MessageID.Configure_Serial_Port, new byte[] { 0x00, (byte)rate, 0x02 });
-            this.Write(p);
-            int[] ParaRate = { 4800, 9600, 19200, 38400, 57600, 115200 };
-            _com.BaudRate = ParaRate[(int)rate];
-
-
+            Payload p = null;
             while (true)
             {
                 p = this.Read();
@@ -62,19 +53,49 @@ namespace GPSLoggerController
                 {
                     if (Payload.MessageID.Configure_Serial_Port == (Payload.MessageID)p.Body[0])
                     {
-                        _com.BaudRate = ParaRate[(int)rate];
-
-                        return;
+                        return RESULT.RESULT_ACK;
                     }
                 }
                 else if (p.ID == Payload.MessageID.NACK)
                 {
                     if (Payload.MessageID.Configure_Serial_Port == (Payload.MessageID)p.Body[0])
                     {
-                        return;
+                        return RESULT.RESULT_NACK;
                     }
                 }
             }
+
+        }
+
+        public enum BaudRate
+        {
+            BaudRate_4800 = 0,
+            BaudRate_9600 = 1,
+            BaudRate_19200 = 2,
+            BaudRate_38400 = 3,
+            BaudRate_57600 = 4,
+            BaudRate_115200 = 5,
+            BaudRate_230400 = 6
+        };
+
+        public void setBaudRate(BaudRate rate)
+        {
+            Payload p = new Payload(Payload.MessageID.Configure_Serial_Port, new byte[] { 0x00, (byte)rate, 0x02 });
+            this.Write(p);
+
+            if( RESULT.RESULT_ACK == this.waitResult(Payload.MessageID.Configure_Serial_Port))
+            {
+                // 成功したから、COM ポートのボーレートも変更する
+                int[] ParaRate = { 4800, 9600, 19200, 38400, 57600, 115200, 230400 };
+                _com.BaudRate = ParaRate[(int)rate];
+            }
+        }
+
+        public void sendRestart()
+        {
+            Payload p = new Payload(Payload.MessageID.System_Restart, new byte[] { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+            this.Write(p);
+            this.waitResult(Payload.MessageID.Configure_Serial_Port);
         }
 
         private void _com_DataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -246,15 +267,15 @@ namespace GPSLoggerController
 
         private byte[] convert(Payload payload)
         {
-            int bodyLength = ((null == payload.Body) ? 0 : payload.Body.Length);
-
-            UInt16 payloadLength = (UInt16)(bodyLength + 1);
+            // payload length
+            UInt16 payloadLength = (UInt16)(payload.ByteLength);
             // 2 = sizeof([Start of Sequence])
             // 2 = sizeof([Payload Length])
             // 1 = sizeof([CS])
             // 2 = sizeof([End of Sequence])
             int size = payloadLength + 7;
 
+            // command buffer
             byte[] result = new byte[size];
 
             // set [Start of Sequence]
@@ -262,14 +283,11 @@ namespace GPSLoggerController
             result[1] = START_OF_SEQUENCE_2;
 
             // set [Payload Length] 
-            result[2] = (byte)(0x00FF & (payloadLength >> 8));
-            result[3] = (byte)((0x00FF & payloadLength));
+            result[2] = (byte)(MASK_LOBYTE & (payloadLength >> 8));
+            result[3] = (byte)((MASK_LOBYTE & payloadLength));
 
-            result[4] = (byte)payload.ID;
-            if (null != payload.Body)
-            {
-                System.Buffer.BlockCopy(payload.Body, 0, result, 5, payload.Body.Length);
-            }
+            // payload
+            payload.CopyTo(result, 5, payload.Body.Length);
 
             // [CS]
             byte checkSum = 0x00;
@@ -288,6 +306,8 @@ namespace GPSLoggerController
 
         public void Dispose()
         {
+            this.sendRestart();
+
             _com.Close();
         }
     }

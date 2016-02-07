@@ -26,6 +26,7 @@ namespace GPSLoggerController
             Configure_Navigation_Data_Message_Interval = 0x11,
             //
             Request_Information_of_the_Log_Buffer_Status = 0x17,
+            Enable_data_read_from_the_log_buffer = 0x1d,
             // Output System Messages
             Software_version = 0x80,
             Software_CRC = 0x81,
@@ -43,7 +44,6 @@ namespace GPSLoggerController
             GPS_Meaurement_Mode = 0xB6,
             // Output Log Status
             Output_Status_of_the_Log_Buffer = 0x94
-
         };
 
         private readonly MessageID _id;
@@ -93,18 +93,16 @@ namespace GPSLoggerController
             }
         }
 
-        public byte[] ToArray()
+        public void CopyTo(byte[] buffer, int offset, int length)
         {
             int size = 1 + ((null == _body) ? 0 : _body.Length);
             byte[] result = new byte[size];
 
-            result[0] = (byte)_id;
+            buffer[offset] = (byte)_id;
             if (null != _body)
             {
-                System.Buffer.BlockCopy(_body, 0, result, 1, _body.Length);
+                System.Buffer.BlockCopy(_body, 0, buffer, 1, Math.Min(length, _body.Length));
             }
-
-            return result;
         }
     }
 }

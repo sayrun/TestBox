@@ -46,13 +46,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataLogFixFull.cs" />
+    <Compile Include="GT730FLSController.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="GT730FLSReader.cs" />
+    <Compile Include="MessageID.cs" />
+    <Compile Include="SkyTraqPort.cs" />
     <Compile Include="Payload.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

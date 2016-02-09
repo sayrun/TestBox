@@ -37,126 +37,6 @@ namespace SkyTraq
             }
         }
 
-        private void fillBuffer(byte[] buffer, int offset, int length)
-        {
-            for( int readCount = 0; readCount < length; )
-            {
-                readCount += _com.Read(buffer, offset + readCount, length - readCount);
-            }
-        }
-
-        public DataLogFixFull ReadLocation(DataLogFixFull current)
-        {
-            UInt16 pos1 = (byte)(0x00FF & _com.ReadByte());
-            pos1 <<= 8;
-            pos1 |= (byte)(0x00FF & _com.ReadByte());
-
-            UInt16 velocity = pos1;
-            velocity &= (UInt16)0x03ff;
-
-            switch ((pos1 & 0xE000))
-            {
-                // empty
-                case 0xE000:
-                    return null;
-                    break;
-
-                // FIX FULL POI
-                case 0x6000:
-                // FIX FULL
-                case 0x4000:
-                    {
-                        DataLogFixFull data = new DataLogFixFull();
-                        data.V = velocity;
-
-                        byte b = (byte)(0x00FF & _com.ReadByte());
-                        data.TOW = (byte)(0x000f & (b >> 4));
-                        data.WN = (UInt16)(0x0030 & b);
-                        data.WN <<= 4;
-                        data.WN |=(UInt16)(0x00FF & _com.ReadByte());
-                        UInt32 un = (UInt32)(0x00FF & _com.ReadByte());
-                        un <<= 8;
-                        un |= (UInt32)(0x00FF & _com.ReadByte());
-                        un <<= 4;
-                        data.TOW |= un;
-
-                        {
-                            data.X = (UInt32)(0x00FF & _com.ReadByte());
-                            data.X <<= 8;
-                            data.X |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un = (UInt32)(0x00FF & _com.ReadByte());
-                            un <<= 8;
-                            un |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un <<= 16;
-                            un &= 0xffff0000;
-                            data.X |= un;
-                        }
-
-
-                        {
-                            data.Y = (UInt32)(0x00FF & _com.ReadByte());
-                            data.Y <<= 8;
-                            data.Y |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un = (UInt32)(0x00FF & _com.ReadByte());
-                            un <<= 8;
-                            un |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un <<= 16;
-                            un &= 0xffff0000;
-                            data.Y |= un;
-
-                        }
-
-                        {
-                            data.Z = (UInt32)(0x00FF & _com.ReadByte());
-                            data.Z <<= 8;
-                            data.Z |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un = (UInt32)(0x00FF & _com.ReadByte());
-                            un <<= 8;
-                            un |= (UInt32)(0x00FF & _com.ReadByte());
-
-                            un <<= 16;
-                            un &= 0xffff0000;
-                            data.Z |= un;
-
-                        }
-
-                    }
-                    break;
-
-                // FIX COMPACT
-                case 0x8000:
-                    {
-                        DataLogFixCompact data = new DataLogFixCompact();
-                        data.V = velocity;
-
-                        data.diffTOW = (UInt16)(0x00FF & _com.ReadByte());
-                        data.diffTOW <<= 8;
-                        data.diffTOW |= (UInt16)(0x00FF & _com.ReadByte());
-
-                        data.diffX = (UInt16)(0x00FF & _com.ReadByte());
-                        data.diffX <<= 2;
-                        UInt16 un = (UInt16)(0x00FF & _com.ReadByte());
-                        data.diffX = (UInt16)( 0x0003 & (un >> 6));
-
-                        data.diffY = (UInt16)(un & 0x003f);
-                        un = (UInt16)(0x00FF & _com.ReadByte());
-                        data.diffY |= (UInt16)(0x03C0 & (un << 6));  // 11 1100 0000
-
-                        data.diffZ = (UInt16)(0x0003 & un);
-                        data.diffZ <<= 8;
-                        data.diffZ |= (UInt16)(0x00FF & _com.ReadByte());
-                    }
-                    break;
-            }
-
-
-        }
-
         public Payload Read()
         {
             bool findHeader1 = false;
@@ -193,8 +73,12 @@ namespace SkyTraq
             payloadLength |= (UInt16)(0x00FF & _com.ReadByte());
 
             // read payload
+            System.Threading.Thread.Sleep(10);
             byte[] rawPayload = new byte[payloadLength];
-            fillBuffer(rawPayload, 0, payloadLength);
+            for (int readCount = 0; readCount < payloadLength;)
+            {
+                readCount += _com.Read(rawPayload, readCount, payloadLength - readCount);
+            }
 
             Payload result = new Payload(rawPayload, 1, rawPayload.Length);
 
@@ -296,6 +180,47 @@ namespace SkyTraq
             // [End of Sequence]
             result[size - 2] = END_OF_SEQUENCE_1;
             result[size - 1] = END_OF_SEQUENCE_2;
+
+            return result;
+        }
+
+        private static int SECTOR_SIZE = 4096;
+
+        public void ReadLogBuffer(byte[] buffer, int offset, int sectors)
+        {
+            for (int readCount = 0; readCount < (SECTOR_SIZE * sectors);)
+            {
+                readCount += _com.Read(buffer, readCount, (SECTOR_SIZE * sectors) - readCount);
+            }
+        }
+
+        private static byte[] CHECKSUM_MARKER = { 0x45, 0x4e, 0x44, 0x00, 0x43, 0x48, 0x45, 0x43, 0x4b, 0x53, 0x55, 0x4d, 0x3d };
+        private static byte[] CHECKSUM_MARKER_FOOTER = { 0x0d, 0x0a };
+
+        public UInt16 ReadLogBufferCS()
+        {
+            byte d;
+            for (int index = 0; index < CHECKSUM_MARKER.Length; ++index)
+            {
+                d = (byte)_com.ReadByte();
+                if (d != CHECKSUM_MARKER[index])
+                {
+                    index = 0;
+                }
+            }
+
+            UInt16 result = (byte)_com.ReadByte();
+            result <<= 8;
+            result |= (byte)_com.ReadByte();
+
+            for (int index = 0; index < CHECKSUM_MARKER_FOOTER.Length; ++index)
+            {
+                d = (byte)_com.ReadByte();
+                if (d != CHECKSUM_MARKER_FOOTER[index])
+                {
+                    index = 0;
+                }
+            }
 
             return result;
         }

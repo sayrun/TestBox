@@ -86,12 +86,12 @@ namespace SkyTraq
             byte checkSum = (byte)(0x00FF & _com.ReadByte());
 
             byte calcChecSum = 0;
-            for(int index = 0; index < rawPayload.Length; ++index)
+            for (int index = 0; index < rawPayload.Length; ++index)
             {
                 calcChecSum ^= rawPayload[index];
             }
 
-            if(checkSum != calcChecSum)
+            if (checkSum != calcChecSum)
             {
                 throw new Exception("check sum error");
             }
@@ -138,7 +138,7 @@ namespace SkyTraq
             }
         }
 
-        public void Write( Payload payload)
+        public void Write(Payload payload)
         {
             byte[] command = convert(payload);
 

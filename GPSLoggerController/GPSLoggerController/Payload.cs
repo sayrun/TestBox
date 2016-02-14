@@ -14,8 +14,8 @@ namespace SkyTraq
         public Payload(byte[] payload, int offset, int length)
         {
             _id = (MessageID)payload[offset];
-            _body = new byte[length];
-            System.Buffer.BlockCopy(payload, offset + 1, _body, 0, length);
+            _body = new byte[length - 1];
+            System.Buffer.BlockCopy(payload, offset + 1, _body, 0, length - 1);
         }
 
         public Payload(MessageID id, byte[] body)
@@ -63,7 +63,7 @@ namespace SkyTraq
             buffer[offset] = (byte)_id;
             if (null != _body)
             {
-                System.Buffer.BlockCopy(_body, 0, buffer, 1, Math.Min(length, _body.Length));
+                System.Buffer.BlockCopy(_body, 0, buffer, offset + 1, Math.Min(length, _body.Length));
             }
         }
     }

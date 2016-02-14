@@ -167,7 +167,7 @@ namespace SkyTraq
             result[3] = (byte)((MASK_LOBYTE & payloadLength));
 
             // payload
-            payload.CopyTo(result, 5, payload.Body.Length);
+            payload.CopyTo(result, 4, payloadLength);
 
             // [CS]
             byte checkSum = 0x00;

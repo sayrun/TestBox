@@ -40,6 +40,7 @@ namespace GPSLoggerController
 
         private void button2_Click(object sender, EventArgs e)
         {
+            /*
             {
                 byte[] work = new byte[] {
                      0x40, 0x00, 0x73, 0x5a, 0x87, 0x93, 0x00, 0xa6, 0xff, 0xc7, 0x29, 0xe9, 0x00, 0x38, 0x35, 0xdd, 0x00, 0x37
@@ -64,8 +65,13 @@ namespace GPSLoggerController
                     };
 
                 _com = new System.IO.BinaryReader(new System.IO.MemoryStream(work));
-            }
+                */
 
+            List<TrackPoint> items = _gt730.ReadLatLonData();
+
+            return;
+
+            /*
             DataLogFixFull data = null;
             TrackPoint pt;
 
@@ -85,6 +91,7 @@ namespace GPSLoggerController
             {
                 System.Diagnostics.Debug.Print("hoge");
             }
+            */
 #if false
             Payload p = new Payload(MessageID.Request_Information_of_the_Log_Buffer_Status);
 
@@ -114,15 +121,19 @@ namespace GPSLoggerController
 
         private void button3_Click(object sender, EventArgs e)
         {
-            _gt730.Dispose();
-            _gt730 = null;
+            _gt730.sendRestart();
+
+            return;
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-#if false
-            _gt730.setBaudRate(GT730FLSReader.BaudRate.BaudRate_115200);
-#endif
+            _gt730.setBaudRate(GT730FLSController.BaudRate.BaudRate_115200);
+
+            button2.Enabled = false;
+            button3.Enabled = false;
+            button4.Enabled = false;
+
         }
     }
 }

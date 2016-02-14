@@ -21,7 +21,7 @@ namespace SkyTraq
 
         public GT730FLSController(string portName)
         {
-            _com = new SerialPort(portName, 38400, Parity.None, 8, StopBits.One);
+            _com = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
 
             _com.Open();
         }
@@ -70,7 +70,7 @@ namespace SkyTraq
                 readCount += _com.Read(rawPayload, readCount, payloadLength - readCount);
             }
 
-            Payload result = new Payload(rawPayload, 1, rawPayload.Length);
+            Payload result = new Payload(rawPayload, 0, rawPayload.Length);
 
             // CS
             byte checkSum = (byte)(0x00FF & _com.ReadByte());
@@ -145,11 +145,11 @@ namespace SkyTraq
             result[3] = (byte)((MASK_LOBYTE & payloadLength));
 
             // payload
-            payload.CopyTo(result, 5, payload.Body.Length);
+            payload.CopyTo(result, 4, payloadLength);
 
             // [CS]
             byte checkSum = 0x00;
-            for (int index = 0; index < payload.Body.Length + 1; ++index)
+            for (int index = 0; index < payloadLength + 1; ++index)
             {
                 checkSum ^= result[index + 4];
             }
@@ -204,7 +204,7 @@ namespace SkyTraq
         }
         #endregion
 
-        public void ReadLatLonData()
+        public List<TrackPoint> ReadLatLonData()
         {
             UInt16 totalSectors;
             UInt16 freeSectors;
@@ -216,20 +216,23 @@ namespace SkyTraq
             RequestBufferStatus(out totalSectors, out freeSectors, out dataLogEnable);
 
             // データが無効なら終わる
-            if (!dataLogEnable) return;
+            //if (!dataLogEnable) return null;
 
             UInt16 sectors = totalSectors;
             sectors -= freeSectors;
 
             byte[] readLog = new byte[sectors * 4096];
             int retryCount = 0;
-            for (UInt16 index = 0; index < sectors; ++index)
+            int readSectors = 0;
+            for (int index = 0; index < sectors; index += readSectors)
             {
+                readSectors = (2 <= (sectors - index)) ? 2 : 1;
+
                 // 読み出しを指示
-                sendReadBuffer(index, 1);
+                sendReadBuffer(index, readSectors);
 
                 // データを取得する
-                ReadLogBuffer(readLog, index * 4096, 1);
+                ReadLogBuffer(readLog, index * 4096, readSectors);
 
                 // CS取得
                 UInt16 resultCS = ReadLogBufferCS();
@@ -292,9 +295,8 @@ namespace SkyTraq
             }
 
             // longitude/latitudeの配列を返す
+            return items;
         }
-
-
 
         private TrackPoint ECEF2LonLat(DataLogFixFull local)
         {
@@ -322,7 +324,7 @@ namespace SkyTraq
             return result;
         }
 
-        private void setBaudRate(BaudRate rate)
+        public void setBaudRate(BaudRate rate)
         {
             Payload p = new Payload(MessageID.Configure_Serial_Port, new byte[] { 0x00, (byte)rate, 0x02 });
             Write(p);
@@ -332,6 +334,8 @@ namespace SkyTraq
                 // 成功したから、COM ポートのボーレートも変更する
                 int[] ParaRate = { 4800, 9600, 19200, 38400, 57600, 115200, 230400 };
                 _com.BaudRate = ParaRate[(int)rate];
+
+                System.Threading.Thread.Sleep(50);
             }
         }
 
@@ -362,14 +366,14 @@ namespace SkyTraq
 
                 if (p.ID == MessageID.ACK)
                 {
-                    if (MessageID.Configure_Serial_Port == (MessageID)p.Body[0])
+                    if (id == (MessageID)p.Body[0])
                     {
                         return RESULT.RESULT_ACK;
                     }
                 }
                 else if (p.ID == MessageID.NACK)
                 {
-                    if (MessageID.Configure_Serial_Port == (MessageID)p.Body[0])
+                    if (id == (MessageID)p.Body[0])
                     {
                         return RESULT.RESULT_NACK;
                     }
@@ -377,7 +381,7 @@ namespace SkyTraq
             }
         }
 
-        private void sendRestart()
+        public void sendRestart()
         {
             Payload p = new Payload(MessageID.System_Restart, new byte[] { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
             Write(p);
@@ -386,13 +390,13 @@ namespace SkyTraq
 
         private void sendReadBuffer(int offsetSector, int sectorCount)
         {
-            Payload p = new Payload(MessageID.Output_Status_of_the_Log_Buffer, new byte[] { 0x00, 0x00, 0x00, 0x02 });
+            Payload p = new Payload(MessageID.Enable_data_read_from_the_log_buffer, new byte[] { 0x00, 0x00, 0x00, 0x02 });
             p.Body[0] = (byte)(0x00FF & (offsetSector >> 8));
             p.Body[1] = (byte)(0x00FF & (offsetSector >> 0));
             p.Body[2] = (byte)(0x00FF & (sectorCount >> 8));
             p.Body[3] = (byte)(0x00FF & (sectorCount >> 0));
             Write(p);
-            this.waitResult(MessageID.Configure_Serial_Port);
+            this.waitResult(MessageID.Enable_data_read_from_the_log_buffer);
         }
 
         private void RequestBufferStatus(out UInt16 totalSectors, out UInt16 freeSectors, out bool dataLogEnable)

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 
 namespace GPSLoggerController
 {
@@ -62,5 +63,78 @@ namespace GPSLoggerController
             button4.Enabled = false;
 
         }
+
+        private void Write(List<TrackPoint> e)
+        {
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.Indent = true;
+            settings.IndentChars = "\t";
+            settings.Encoding = Encoding.UTF8;
+            using (XmlWriter xw = XmlWriter.Create(@"C:\Users\Tomo\Documents\hoge.gpx", settings))
+            {
+                xw.WriteStartElement("gps");
+                {
+                    xw.WriteAttributeString("version", "1.0");
+                    xw.WriteAttributeString("creator", "TTTT");
+
+                    xw.WriteAttributeString("xmlns", "xsi", null, "http://www.w3.org/2001/XMLSchema-instance");
+                    xw.WriteAttributeString("schemaLocation", "http://www.w3.org/2001/XMLSchema-instance", "http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd");
+
+                    // 作成時間
+                    xw.WriteElementString("time", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+
+                    xw.WriteStartElement("bounds");
+                    {
+                        xw.WriteAttributeString("minlat", "1.0");
+                        xw.WriteAttributeString("minlon", "1.0");
+                        xw.WriteAttributeString("maxlat", "1.0");
+                        xw.WriteAttributeString("maxlon", "1.0");
+                    }
+                    xw.WriteEndElement();
+
+
+                    xw.WriteStartElement("trk");
+                    {
+                        xw.WriteStartElement("trkseg");
+                        {
+                            int index = 1;
+                            foreach (TrackPoint point in e)
+                            {
+                                xw.WriteStartElement("trkpt");
+                                {
+                                    decimal lat = point.Lat;
+                                    if( "S" == point.LatMark)
+                                    {
+                                        lat *= -1;
+                                    }
+                                    decimal lon = point.Lon;
+                                    if ("W" == point.LonMark)
+                                    {
+                                        lon *= -1;
+                                    }
+                                    decimal ele = point.Ele;
+
+                                    xw.WriteAttributeString("lat", lat.ToString());
+                                    xw.WriteAttributeString("lon", lon.ToString());
+
+                                    xw.WriteElementString("ele", point.Ele.ToString());
+                                    xw.WriteElementString("time", point.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                                    xw.WriteElementString("speed", point.Speed.ToString());
+                                    xw.WriteElementString("name", string.Format( "TP{0:4}", index));
+                                    index++;
+                                }
+                                xw.WriteEndElement();
+                            }
+                        }
+                        xw.WriteEndElement();
+                    }
+                    xw.WriteEndElement();
+                }
+                xw.WriteEndElement();
+            }
+
+
+        }
+
     }
 }

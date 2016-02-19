@@ -24,6 +24,7 @@ namespace SkyTraq
         Configure_Navigation_Data_Message_Interval = 0x11,
         //
         Request_Information_of_the_Log_Buffer_Status = 0x17,
+        Clear_Data_Logging_Buffer = 0x19,
         Enable_data_read_from_the_log_buffer = 0x1d,
         // Output System Messages
         Software_version = 0x80,

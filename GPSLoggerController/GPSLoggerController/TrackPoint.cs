@@ -8,46 +8,46 @@ namespace SkyTraq
 {
     class TrackPoint : IComparable<TrackPoint>, IComparable<DateTime>
     {
-        private decimal _lon;
-        private decimal _lat;
-        private decimal _ele;
+        private decimal _longitude;
+        private decimal _latitude;
+        private decimal _elevation;
         private decimal _speed;
         private DateTime _time;
 
         public TrackPoint(decimal lon, decimal lat, DateTime time)
         {
-            _lon = lon;
-            _lat = lat;
-            _ele = decimal.MaxValue;
+            _longitude = lon;
+            _latitude = lat;
+            _elevation = decimal.MaxValue;
             _speed = decimal.Zero;
             _time = time;
         }
 
-        public decimal Lon
+        public decimal Longitude
         {
             get
             {
-                return _lon;
+                return _longitude;
             }
         }
 
-        public decimal Lat
+        public decimal Latitude
         {
             get
             {
-                return _lat;
+                return _latitude;
             }
         }
 
-        public decimal Ele
+        public decimal Elevation
         {
             get
             {
-                return _ele;
+                return _elevation;
             }
             set
             {
-                _ele = value;
+                _elevation = value;
             }
         }
 
@@ -106,11 +106,11 @@ namespace SkyTraq
             return result;
         }
 
-        public string LonMark
+        public string LongitudeMark
         {
             get
             {
-                if (0 <= _lon)
+                if (0 <= _longitude)
                 {
                     return "N";
                 }
@@ -121,16 +121,16 @@ namespace SkyTraq
             }
         }
 
-        public UInt32[] LonArray()
+        public UInt32[] LongitudeArray()
         {
-            return ToLonLatArray(_lon);
+            return ToLonLatArray(_longitude);
         }
 
         public string LatMark
         {
             get
             {
-                if (0 <= _lat)
+                if (0 <= _latitude)
                 {
                     return "E";
                 }
@@ -142,14 +142,14 @@ namespace SkyTraq
 
         }
 
-        public UInt32[] LatArray()
+        public UInt32[] LatitudeArray()
         {
-            return ToLonLatArray(_lat);
+            return ToLonLatArray(_latitude);
         }
 
-        public UInt32[] EleArray()
+        public UInt32[] ElevationArray()
         {
-            return ToEleArray(_ele);
+            return ToEleArray(_elevation);
         }
 
         public UInt32[] SpeedArray()

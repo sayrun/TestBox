@@ -28,6 +28,12 @@ namespace GPSLoggerController
 
         private void button1_Click(object sender, EventArgs e)
         {
+            if( null != _gt730)
+            {
+                _gt730.Dispose();
+                _gt730 = null;
+            }
+
             _gt730 = new GT730FLSController("COM6");
 
             button2.Enabled = true;
@@ -49,19 +55,14 @@ namespace GPSLoggerController
 
         private void button3_Click(object sender, EventArgs e)
         {
-            _gt730.sendRestart();
+            _gt730.Dispose();
 
             return;
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            _gt730.setBaudRate(GT730FLSController.BaudRate.BaudRate_115200);
-
-            button2.Enabled = false;
-            button3.Enabled = false;
-            button4.Enabled = false;
-
+            MessageBox.Show("実装していない");
         }
 
         private void Write(List<TrackPoint> e)
@@ -102,22 +103,22 @@ namespace GPSLoggerController
                             {
                                 xw.WriteStartElement("trkpt");
                                 {
-                                    decimal lat = point.Lat;
+                                    decimal lat = point.Latitude;
                                     if( "S" == point.LatMark)
                                     {
                                         lat *= -1;
                                     }
-                                    decimal lon = point.Lon;
-                                    if ("W" == point.LonMark)
+                                    decimal lon = point.Longitude;
+                                    if ("W" == point.LongitudeMark)
                                     {
                                         lon *= -1;
                                     }
-                                    decimal ele = point.Ele;
+                                    decimal ele = point.Elevation;
 
                                     xw.WriteAttributeString("lat", lat.ToString());
                                     xw.WriteAttributeString("lon", lon.ToString());
 
-                                    xw.WriteElementString("ele", point.Ele.ToString());
+                                    xw.WriteElementString("ele", point.Elevation.ToString());
                                     xw.WriteElementString("time", point.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"));
                                     xw.WriteElementString("speed", point.Speed.ToString());
                                     xw.WriteElementString("name", string.Format( "TP{0:4}", index));

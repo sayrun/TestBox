@@ -22,8 +22,6 @@ namespace GPSLoggerController
         public MainForm()
         {
             InitializeComponent();
-
-            button2.Enabled = true;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -34,16 +32,17 @@ namespace GPSLoggerController
                 _gt730 = null;
             }
 
-            _gt730 = new GT730FLSController("COM6");
+            string portName = comboBox1.SelectedItem.ToString();
+
+            _gt730 = new GT730FLSController(portName);
 
             button2.Enabled = true;
             button3.Enabled = true;
             button4.Enabled = true;
+            comboBox1.Enabled = false;
 
             return;
         }
-
-        System.IO.BinaryReader _com;
 
         private void button2_Click(object sender, EventArgs e)
         {
@@ -57,12 +56,27 @@ namespace GPSLoggerController
         {
             _gt730.Dispose();
 
+            button2.Enabled = false;
+            button3.Enabled = false;
+            button4.Enabled = false;
+            comboBox1.Enabled = true;
+
+
             return;
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("実装していない");
+            string msg = string.Empty;
+            if( _gt730.EraceLatLonData())
+            {
+                msg = "消去しました";
+            }
+            else
+            {
+                msg = "消去できませんでした";
+            }
+            MessageBox.Show(msg, this.Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void Write(List<TrackPoint> e)
@@ -137,5 +151,12 @@ namespace GPSLoggerController
 
         }
 
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            foreach (string portName in System.IO.Ports.SerialPort.GetPortNames())
+            {
+                comboBox1.Items.Add(portName);
+            }
+        }
     }
 }

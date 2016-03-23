@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoogleMapsTimelinePlugin", "GoogleMapsTimelinePlugin\GoogleMapsTimelinePlugin.csproj", "{B590F26F-7992-4B2B-8500-6F7226ADAF0B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B590F26F-7992-4B2B-8500-6F7226ADAF0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B590F26F-7992-4B2B-8500-6F7226ADAF0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B590F26F-7992-4B2B-8500-6F7226ADAF0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B590F26F-7992-4B2B-8500-6F7226ADAF0B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
